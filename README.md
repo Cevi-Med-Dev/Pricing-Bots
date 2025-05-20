@@ -4,7 +4,7 @@ Once buried deep in our stack, there lived a bot that had gone... rogue.
 
 It wasn’t malicious, just misunderstood — miscalculating price changes, giving away medical supplies, and leaving a trail of disappointment mixed with confusion. What started as a tool to help had become a liability.
 
-Sweeping its fragmented calculations undere the rug came back to bite us.
+Sweeping its fragmented miscalculations under the rug for so long came back to bite us.
 
 ---
 
