@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actualizar Precios de Clarity CSV</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    input[type="file"],
+    button {
+      display: block;
+      width: 100%;
+      margin-bottom: 20px;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Actualizar Precios desde CSV</h1>
+    <p>Los archivos CSV deben contener las siguientes columnas:</p>
+    <ul>
+      <li><strong>Archivo de precios:</strong> Code, Cost Price, Price</li>
+      <li><strong>Archivo de productos:</strong> Item Type, Manufacturer Part Number, Product Code/SKU, Track Inventory,
+        Cost Price, Price</li>
+    </ul>
+
+    <form id="csvForm">
+      <label for="priceList">Selecciona la lista de precios:</label>
+      <input type="file" id="priceList" accept=".csv" required>
+
+      <label for="productList">Selecciona la lista de productos:</label>
+      <input type="file" id="productList" accept=".csv" required>
+
+      <button type="submit">Actualizar y Descargar</button>
+    </form>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    // Maneja el evento de envío del formulario
+    document.getElementById('csvForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const priceFile = document.getElementById('priceList').files[0];
+      const productFile = document.getElementById('productList').files[0];
+      // console.log("price file :",priceFile,"product file :",productFile)
+      if (!priceFile || !productFile) {
+        alert('Por favor, selecciona ambos archivos CSV.');
+        return;
+      }
+
+      const status = document.getElementById('status');
+      status.textContent = 'Procesando archivos...';
+
+      try {
+        const priceData = await fileToText(priceFile);
+        const productData = await fileToText(productFile);
+ console.log("file to txt price data :",priceData,"file to txt product data :",productData)
+
+        // Procesa los archivos CSV
+        const updatedCSV = processCSV(priceData, productData);
+console.log("updated csv : ", updatedCSV)
+
+        // Descarga el archivo actualizado
+        downloadCSV(updatedCSV, 'updated_products.csv');
+        status.textContent = '¡Archivo actualizado generado con éxito!';
+      } catch (error) {
+        console.error(error);
+        status.textContent = 'Error al procesar los archivos.';
+      }
+    });
+
+    // Convierte un archivo CSV en texto
+    function fileToText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsText(file);
+        // console.log("file to text file recieve : " ,file, "output 'reader' = ", reader)
+      });
+    }
+
+    // Procesa los archivos CSV y actualiza los precios
+    function processCSV(priceData, productData) {
+      const Papa = window.Papa;
+      const priceList = Papa.parse(priceData, { header: true }).data;
+      const productList = Papa.parse(productData, { header: true }).data;
+      const updatedProducts = [];
+      let counter = 0
+      productList.forEach(product => {
+        let matchedCode = product["Track Inventory"] === "by product" // dosent have options individula sku
+          ? cleanCode(product["Manufacturer Part Number"]) //assigns manufacturer number since there is not oiptions
+          : cleanCode(product["Product Code/SKU"]); // adds sku relevants to option chosen
+
+        //modification goes in here Ex Oakwords = product ID number added Code to CSV
+        const priceItem = priceList.find(item => cleanCode(item["Code"]) === matchedCode); // required in the pricelist 
+        // priceList.forEach(item => console.log(cleanCode(item["Code"])))
+        
+        if (priceItem) {
+          console.log("found price item match : ", priceItem)
+          switch (product["Item Type"].trim()) {
+            case "Product": //it is the base product 
+              product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // updates  "cost price"
+              product["Price"] = Math.round(cleanNumber(priceItem["Price"])); // updates "price"
+              break;
+            case "SKU": // option cost / part 1
+              product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // sku / option
+              product["Price"] = ''; //must be empty seperate process FOR SKU **8
+              console.log("found price item : ", priceItem)
+              console.log("old prices : ", product["Price"], product["Cost Price"])
+              console.log("new prices : ",  priceItem["Price"], priceItem["Cost Price"])
+              product["Cost Price"] = priceItem["Cost Price"]
+              product["Price"] = priceItem["Price"]
+              break;
+            case "Rule": // option precio / part 2
+              const prefix = product["Price"].match(/\[.*?\]/)?.[0] || ""; // regex takes [FIXED] /[ADD] / [DELETE] stires to use later 
+              product["Cost Price"] = ''; //must be empty seperate process FOR RULE ***
+              product["Price"] = `${prefix}${Math.round(cleanNumber(priceItem["Price"]))}`; // new formatted price
+              console.log("old prices : ", product["Price"], product["Cost Price"])
+              console.log("new prices : ",  priceItem["Price"], priceItem["Cost Price"])
+              break;
+          }
+          //product["Updated"] = 'Y'; // for internal communication 
+          console.log("new price on product: ", product["Price"], product["Cost Price"])
+        }
+        updatedProducts.push(product);
+      });
+      return Papa.unparse(updatedProducts);
+    }
+
+    // Descarga un archivo CSV generado
+    function downloadCSV(data, filename) {
+      const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Limpia y normaliza un código SKU o número de parte
+    function cleanCode(code) {
+      if (!code || typeof code !== "string") return "";
+      return code.toLowerCase().replace(/^(sku-|clarity-|sku |clarity |)/i, "").trim(); //regex / replace clairty with brand ex ADC/57575 or sku-575757
+    }
+
+    // Convierte un valor numérico en número flotante limpio
+    function cleanNumber(value) {
+      if (!value || typeof value !== "string") return 0;
+      return parseFloat(value.replace(/[^0-9.]/g, "").trim());
+    }
+  </script>
+</body>
+
+</html>
