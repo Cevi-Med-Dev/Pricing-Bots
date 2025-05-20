@@ -47,16 +47,17 @@
 
 <body>
   <div class="container">
-    <h1>Actualizar Precios desde CSV</h1>
-    <p>Los archivos CSV deben contener las siguientes columnas:</p>
+    <h1>Skil-Care Price Bot</h1>
+    <p>Required fields</p>
     <ul>
-      <li><strong>Archivo de precios:</strong> Code, Cost Price, Price</li>
-      <li><strong>Archivo de productos:</strong> Item Type, Manufacturer Part Number, Product Code/SKU, Track Inventory,
+      <li><strong>Skil-Care Price Sheet</strong> Code, Cost Price, Old Price</li>
+      <li><strong>CeviMed Skil-Care Product Sheet:</strong> Item Type,Product ID, Manufacturer Part Number, Product
+        Code/SKU, Track Inventory,
         Cost Price, Price</li>
     </ul>
 
     <form id="csvForm">
-      <label for="priceList">Selecciona la lista de precios:</label>
+      <label for="priceList">Add Price List:</label>
       <input type="file" id="priceList" accept=".csv" required>
 
       <label for="productList">Selecciona la lista de productos:</label>
@@ -85,14 +86,14 @@
       try {
         const priceData = await fileToText(priceFile);
         const productData = await fileToText(productFile);
- console.log("file to txt price data :",priceData,"file to txt product data :",productData)
+        console.log("file to txt price data :", priceData, "file to txt product data :", productData)
 
         // Procesa los archivos CSV
         const updatedCSV = processCSV(priceData, productData);
-console.log("updated csv : ", updatedCSV)
+        console.log("updated csv : ", updatedCSV)
 
         // Descarga el archivo actualizado
-        downloadCSV(updatedCSV, 'updated_products.csv');
+        // downloadCSV(updatedCSV, 'updated_products.csv');
         status.textContent = '¡Archivo actualizado generado con éxito!';
       } catch (error) {
         console.error(error);
@@ -118,6 +119,10 @@ console.log("updated csv : ", updatedCSV)
       const productList = Papa.parse(productData, { header: true }).data;
       const updatedProducts = [];
       let counter = 0
+
+      let formatCurrency = (num)=> Number.isInteger(num) ? Number(num.toFixed(2)) : Number(num);
+      
+
       productList.forEach(product => {
         let matchedCode = product["Track Inventory"] === "by product" // dosent have options individula sku
           ? cleanCode(product["Manufacturer Part Number"]) //assigns manufacturer number since there is not oiptions
@@ -126,29 +131,45 @@ console.log("updated csv : ", updatedCSV)
         //modification goes in here Ex Oakwords = product ID number added Code to CSV
         const priceItem = priceList.find(item => cleanCode(item["Code"]) === matchedCode); // required in the pricelist 
         // priceList.forEach(item => console.log(cleanCode(item["Code"])))
-        
+
         if (priceItem) {
           console.log("found price item match : ", priceItem)
+          let increaseBy = (formatCurrency(priceItem["Cost Price"])-formatCurrency(priceItem["Old Price"]))
+          let newPrice = (formatCurrency(priceItem["Cost Price"]) + Number(increaseBy.toFixed(2)))
+          let newPriceX2 = (formatCurrency(priceItem["Cost Price"]) + Number(increaseBy.toFixed(2)) * 2)
+          let percentage = (increaseBy / formatCurrency(priceItem["Old Price"])) * 100
+          console.log("Product Useto cost : ",priceItem["Old Price"])
+          console.log("Product increase by : ", increaseBy.toFixed(2))
+          console.log("Product increase X2 amount increased : ", increaseBy.toFixed(2) * 2)
+          console.log("Product Now cost : ",priceItem["Cost Price"])
+          console.log("new price",newPrice)
+          console.log("new price x2 increase ",newPriceX2)
+          console.log("percentage increase : ", percentage.toFixed(2),"%")
+          
           switch (product["Item Type"].trim()) {
             case "Product": //it is the base product 
-              product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // updates  "cost price"
-              product["Price"] = Math.round(cleanNumber(priceItem["Price"])); // updates "price"
+              product["Price"] = Math.round(formatCurrency(newPrice)); // updates  "cost price"
+              // product["Price"] = Math.round(cleanNumber(priceItem["Price"])); // updates "price"
               break;
-            case "SKU": // option cost / part 1
-              product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // sku / option
-              product["Price"] = ''; //must be empty seperate process FOR SKU **8
+              case "SKU": // option cost / part 1
+              // product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // sku / option
+              // product["Price"] = ''; //must be empty seperate process FOR SKU **8
               console.log("found price item : ", priceItem)
               console.log("old prices : ", product["Price"], product["Cost Price"])
-              console.log("new prices : ",  priceItem["Price"], priceItem["Cost Price"])
-              product["Cost Price"] = priceItem["Cost Price"]
-              product["Price"] = priceItem["Price"]
+              console.log("new price", Math.round((formatCurrency(priceItem["Cost Price"])+increaseBy.toFixed(2)), newPrice, formatCurrency(newPrice )))
+              product["Price"] = Math.round(formatCurrency(newPrice)); 
+              // product["Cost Price"] = priceItem["Cost Price"]
+              // product["Price"] = priceItem["Price"]
               break;
-            case "Rule": // option precio / part 2
-              const prefix = product["Price"].match(/\[.*?\]/)?.[0] || ""; // regex takes [FIXED] /[ADD] / [DELETE] stires to use later 
-              product["Cost Price"] = ''; //must be empty seperate process FOR RULE ***
-              product["Price"] = `${prefix}${Math.round(cleanNumber(priceItem["Price"]))}`; // new formatted price
-              console.log("old prices : ", product["Price"], product["Cost Price"])
-              console.log("new prices : ",  priceItem["Price"], priceItem["Cost Price"])
+              case "Rule": // option precio / part 2
+              console.log("new price", Math.round((formatCurrency(priceItem["Cost Price"])+increaseBy.toFixed(2)), newPrice, formatCurrency(newPrice )))
+              product["Cost Price"] = Math.round(formatCurrency(newPrice)); 
+            console.log("reformatted price",formatCurrency(priceItem["Old Price"]))  
+              // const prefix = product["Price"].match(/\[.*?\]/)?.[0] || ""; // regex takes [FIXED] /[ADD] / [DELETE] stires to use later 
+              // product["Cost Price"] = ''; //must be empty seperate process FOR RULE ***
+              // product["Price"] = `${prefix}${Math.round(cleanNumber(newPrice))}`; // new formatted price
+              console.log("old prices : ", product["Cost Price"], product["Cost Price"])
+              console.log("new prices : ", priceItem["Price"], priceItem["Cost Price"])
               break;
           }
           //product["Updated"] = 'Y'; // for internal communication 
@@ -164,7 +185,7 @@ console.log("updated csv : ", updatedCSV)
       const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', filename);
+      // link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

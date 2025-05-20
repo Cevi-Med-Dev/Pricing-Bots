@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oakworks Prices CSV</title>
+  <title>Actualizar Precios de Clarity CSV</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
     body {
@@ -46,7 +46,7 @@
 </head>
 
 <body>
-  <div class="container">
+   <div class="container">
     <h1>Oakworks Price Bot</h1>
     <p>Required fields</p>
     <ul>
@@ -133,24 +133,22 @@ console.log("updated csv : ", updatedCSV)
             case "Product": //it is the base product 
               product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // updates  "cost price"
               product["Price"] = Math.round(cleanNumber(priceItem["Price"])); // updates "price"
-              console.log("found price item : ", priceItem)
-              console.log("old cevimed price : ", product["Price"], product["Cost Price"])
-              console.log("oakworks list price : ", priceItem["Cost Price"], priceItem["Price"])
               break;
             case "SKU": // option cost / part 1
               product["Cost Price"] = cleanNumber(priceItem["Cost Price"]); // sku / option
               product["Price"] = ''; //must be empty seperate process FOR SKU **8
               console.log("found price item : ", priceItem)
-              console.log("old cevimed price : ", product["Price"], product["Cost Price"])
-              console.log("oakworks list price : ", priceItem["Cost Price"], priceItem["Price"])
+              console.log("old prices : ", product["Price"], product["Cost Price"])
+              console.log("new prices : ",  priceItem["Price"], priceItem["Cost Price"])
+              product["Cost Price"] = priceItem["Cost Price"]
+              product["Price"] = priceItem["Price"]
               break;
             case "Rule": // option precio / part 2
               const prefix = product["Price"].match(/\[.*?\]/)?.[0] || ""; // regex takes [FIXED] /[ADD] / [DELETE] stires to use later 
               product["Cost Price"] = ''; //must be empty seperate process FOR RULE ***
               product["Price"] = `${prefix}${Math.round(cleanNumber(priceItem["Price"]))}`; // new formatted price
-              console.log("found price item : ", priceItem)
-              console.log("old cevimed price : ", product["Price"], product["Cost Price"])
-              console.log("oakworks list price : ", priceItem["Cost Price"], priceItem["Price"])
+              console.log("old prices : ", product["Price"], product["Cost Price"])
+              console.log("new prices : ",  priceItem["Price"], priceItem["Cost Price"])
               break;
           }
           //product["Updated"] = 'Y'; // for internal communication 
