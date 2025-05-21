@@ -42,7 +42,6 @@ Where it once confused, it now guides and opens doors for flexibility and adapti
 ---
 
 > 🛠️ This bot was never the problem.  
-> It just needed someone to believe in it — and clean up its mess.
-
+> It just needed someone to truly understand it, it's flaws, its potential  — and clean up its mess to re-align the bot with it's ultimate purpose.
 
 
